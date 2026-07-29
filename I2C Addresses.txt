@@ -1,0 +1,5 @@
+0x36 - MAX17048 LiPo Battery Monitor
+0x24 - MCP23017 16 Bit Pin Extender
+0x1F - STM32F042 Keebdeck 13x6 BBQ10 Firmware Driver
+0x77 - BME280 Pressure, Humidity, and Temperature Sensor
+0x68 - MPU9150 9 Axis IMU Accelerometer, Gyroscope, Compass

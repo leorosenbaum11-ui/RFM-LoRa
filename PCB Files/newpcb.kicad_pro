@@ -260,7 +260,52 @@
     "equivalence_files": []
   },
   "erc": {
-    "erc_exclusions": [],
+    "erc_exclusions": [
+      [
+        "multiple_net_names|2959100|1511300|a1127697-0ccc-4682-b619-f593735098c5|8406c8f5-d8e6-40c3-b4b6-2f5907aea556|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "This is intended"
+      ],
+      [
+        "multiple_net_names|3187700|1409700|75a45cf7-28f6-41b1-94c0-c4cf68985f35|a8f9f2b0-8f1b-4a36-a32e-3a4871c1d982|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "This is intended"
+      ],
+      [
+        "multiple_net_names|3187700|1409700|da601de4-c173-4c31-8094-8b891e4237c3|a8f9f2b0-8f1b-4a36-a32e-3a4871c1d982|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "Intended"
+      ],
+      [
+        "pin_to_pin|3124200|952500|c46de5c9-bda5-40ab-871b-351b2088ea98|583c3013-014c-41b2-8785-45d323c5d5df|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "Pin AD0 used as input and tied to GND"
+      ],
+      [
+        "pin_to_pin|3187700|1460500|583c3013-014c-41b2-8785-45d323c5d5df|f7d29cf3-ae72-4e46-931f-ea8921148bf5|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "Actually reference/input"
+      ],
+      [
+        "pin_to_pin|3187700|1587500|f7d29cf3-ae72-4e46-931f-ea8921148bf5|7474671e-60a4-4a37-857d-16d2d9604fc1|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "Actually reference/input"
+      ],
+      [
+        "pin_to_pin|3848100|1612900|7474671e-60a4-4a37-857d-16d2d9604fc1|b3b7ea2f-5842-4656-abe9-e4dcee1041b3|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842",
+        "Actually reference/input"
+      ],
+      [
+        "power_pin_not_driven|1524000|977900|1ab3d7b9-c251-4084-a288-25039b3455ae|00000000-0000-0000-0000-000000000000|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|",
+        "Actually is global power, just separate plane"
+      ],
+      [
+        "power_pin_not_driven|2171700|876300|d533948e-9e9a-4025-aed3-15656f3e1538|00000000-0000-0000-0000-000000000000|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|",
+        "Input is powered by JST jack externally connected to LiPo/Ion battery"
+      ],
+      [
+        "power_pin_not_driven|2197100|1536700|5a3a24c0-721f-4a63-9508-dcae34538436|00000000-0000-0000-0000-000000000000|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|",
+        "Actually is driven by output power pin, coming from jst jack"
+      ],
+      [
+        "power_pin_not_driven|2222500|850900|13be3bce-be16-41e4-8e2a-f80a1d4d637c|00000000-0000-0000-0000-000000000000|/f95ccd17-1e66-4ac0-a70e-856164ff5842|/f95ccd17-1e66-4ac0-a70e-856164ff5842|",
+        "3V3 on Feather used as output"
+      ]
+    ],
     "meta": {
       "version": 0
     },
@@ -467,7 +512,7 @@
       "no_connect_dangling": "warning",
       "pin_not_connected": "error",
       "pin_not_driven": "error",
-      "pin_to_pin": "warning",
+      "pin_to_pin": "error",
       "power_pin_not_driven": "error",
       "same_local_global_label": "warning",
       "similar_label_and_power": "warning",
@@ -603,12 +648,30 @@
           "label": "Datasheet",
           "name": "Datasheet",
           "show": true
+        },
+        {
+          "group_by": false,
+          "label": "Description",
+          "name": "Description",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "#",
+          "name": "${ITEM_NUMBER}",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Sim.Pins",
+          "name": "Sim.Pins",
+          "show": false
         }
       ],
       "filter_string": "",
       "group_symbols": true,
       "include_excluded_from_bom": true,
-      "name": "Default Editing",
+      "name": "",
       "sort_asc": true,
       "sort_field": "Reference"
     },
@@ -669,7 +732,7 @@
         "uuid": "f95ccd17-1e66-4ac0-a70e-856164ff5842"
       }
     ],
-    "used_designators": "U1,Y1,C1-2",
+    "used_designators": "U1-8,A1,Y1,C1-15,#PWR1-77,J1-5,P1,SW1-5,R1-9,D1,NT1-2",
     "variants": []
   },
   "sheets": [
