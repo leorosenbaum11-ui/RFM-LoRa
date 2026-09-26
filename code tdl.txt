@@ -1,0 +1,24 @@
+code tdl
+
+class
+	method
+
+put classes in separate files, all methods static
+-------------------------
+
+registers class
+	write register
+	read register
+transceiver class
+	transmit byte
+
+	receive byte
+
+	switch band
+	switch protocol
+
+	switch network
+	enable network
+gps class
+	
+	
