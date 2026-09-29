@@ -2,22 +2,18 @@
 Long range telemetry and communication through LoRa chip WIO-LR2021
 Hopefully going to be one big independent board / cyberdeck style thing
 
-Part Models:
+Part Models (more detailed BOM in files):
 Microcontroller: Adafruit Feather ESP32-S3
 Pin Extender: MCU23S17
 Transciever: Seeed WIO-LR2021
 Keyboard Driver: STM32F042CFU(x)
 Keyboard: Solderparty Keebdeck Keyboard_6R13C
-USB for Keyboard: TBD(Generic symbol in place)
-GPS: TBD
-Sensors: TBD
-Screen: TBD
+GPS: Adafruit Ultimate GPS MTK3339
+Sensors: TI TMP-100 Temperature, MAX17048 Battery, BME280 Pressure Humidity
+Compass: LSM303AGR Compass Accelerometer
+Screen: ILI9341 Non-Touch
 
 
 Program:
 upload bbq10 firmware to stm32 and configure
-
-Firmware/Boot file for Feather:
-do registers for pin extender
-do registers for transciever
-configure pins
+upload my firmware
