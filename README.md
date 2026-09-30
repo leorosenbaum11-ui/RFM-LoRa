@@ -1,6 +1,6 @@
 # RF-Messager-Project
 Long range telemetry and communication through LoRa chip WIO-LR2021
-Hopefully going to be one big independent board / cyberdeck style thing
+PCB in 3d printed case with Keyboard, Screen, 2 SMA Antenna Ports, and GPS FL Antenna port
 
 Part Models (more detailed BOM in files):
 Microcontroller: Adafruit Feather ESP32-S3
