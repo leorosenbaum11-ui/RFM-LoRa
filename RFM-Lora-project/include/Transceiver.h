@@ -8,6 +8,10 @@
 class Transceiver {
     private:
         static const int NSS = 9, IRQ = 5, NRST = 11, BUSY = 10;
+        static LR2021 radio;
+
+        volatile static bool transmittedFlag;
+        
 
     public:
         static int init_lr2021();
