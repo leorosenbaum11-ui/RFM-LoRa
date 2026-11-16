@@ -1,0 +1,114 @@
+#include "SX1273.h"
+#if !RADIOLIB_EXCLUDE_SX127X
+
+SX1273::SX1273(Module* mod) : SX1272(mod) {
+
+}
+
+int16_t SX1273::begin(const ConfigLoRa_t& cfg) {
+  // execute common part
+  uint8_t version = RADIOLIB_SX1272_CHIP_VERSION;
+  int16_t state = SX127x::begin(&version, 1, cfg.syncWord, cfg.preambleLength);
+  RADIOLIB_ASSERT(state);
+
+  // configure publicly accessible settings
+  state = setBandwidth(cfg.bandwidth);
+  RADIOLIB_ASSERT(state);
+
+  state = setFrequency(cfg.frequency);
+  RADIOLIB_ASSERT(state);
+
+  state = setSpreadingFactor(cfg.spreadingFactor);
+  RADIOLIB_ASSERT(state);
+
+  state = setCodingRate(cfg.codingRate);
+  RADIOLIB_ASSERT(state);
+
+  state = setOutputPower(cfg.power);
+  RADIOLIB_ASSERT(state);
+
+  state = setGain(this->gain);
+  RADIOLIB_ASSERT(state);
+
+  // set publicly accessible settings that are not a part of begin method
+  state = setCRC(true);
+  return(state);
+}
+
+int16_t SX1273::setSpreadingFactor(uint8_t sf) {
+  uint8_t newSpreadingFactor;
+
+  // check allowed spreading factor values
+  switch(sf) {
+    case 6:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_6;
+      break;
+    case 7:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_7;
+      break;
+    case 8:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_8;
+      break;
+    case 9:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_9;
+      break;
+    default:
+      return(RADIOLIB_ERR_INVALID_SPREADING_FACTOR);
+  }
+
+  // set spreading factor and if successful, save the new setting
+  int16_t state = setSpreadingFactorRaw(newSpreadingFactor);
+  if(state == RADIOLIB_ERR_NONE) {
+    SX127x::spreadingFactor = sf;
+  }
+
+  return(state);
+}
+
+int16_t SX1273::checkDataRate(DataRate_t dr, ModemType_t modem) {
+  int16_t state = RADIOLIB_ERR_UNKNOWN;
+
+  // retrieve modem if not supplied
+  if(modem == RADIOLIB_MODEM_NONE) {
+    state = this->getModem(&modem);
+    RADIOLIB_ASSERT(state);
+  }
+
+  // select interpretation based on modem
+  if(modem == RADIOLIB_MODEM_FSK) {
+    RADIOLIB_CHECK_RANGE(dr.fsk.bitRate, 500, RADIOLIB_UNIT_KILO(300), RADIOLIB_ERR_INVALID_BIT_RATE);
+    if(!((dr.fsk.freqDev + dr.fsk.bitRate/2 <= RADIOLIB_UNIT_KILO(250)) && (dr.fsk.freqDev <= RADIOLIB_UNIT_KILO(200)))) {
+      return(RADIOLIB_ERR_INVALID_FREQUENCY_DEVIATION);
+    }
+    return(RADIOLIB_ERR_NONE);
+
+  } else if(modem == RADIOLIB_MODEM_LORA) {
+    RADIOLIB_CHECK_RANGE(dr.lora.spreadingFactor, 6, 9, RADIOLIB_ERR_INVALID_SPREADING_FACTOR);
+    RADIOLIB_CHECK_RANGE(dr.lora.bandwidth, RADIOLIB_UNIT_KILO(125), RADIOLIB_UNIT_KILO(500), RADIOLIB_ERR_INVALID_BANDWIDTH);
+    RADIOLIB_CHECK_RANGE(dr.lora.codingRate, 4, 8, RADIOLIB_ERR_INVALID_CODING_RATE);
+    return(RADIOLIB_ERR_NONE);
+  
+  }
+
+  return(state);
+}
+
+int16_t SX1273::setModem(ModemType_t modem) {
+  switch(modem) {
+    // the default 434 MHz is out of range for SX1273, so keep the current frequency
+    case(ModemType_t::RADIOLIB_MODEM_LORA): {
+      ConfigLoRa_t cfg;
+      cfg.frequency = this->frequency;
+      return(this->begin(cfg));
+    } break;
+    case(ModemType_t::RADIOLIB_MODEM_FSK): {
+      ConfigFSK_t cfg;
+      cfg.frequency = this->frequency;
+      return(this->beginFSK(cfg));
+    } break;
+    default:
+      return(RADIOLIB_ERR_WRONG_MODEM);
+  }
+}
+
+#endif

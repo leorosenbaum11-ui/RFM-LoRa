@@ -1,0 +1,163 @@
+#include "SX1277.h"
+#if !RADIOLIB_EXCLUDE_SX127X
+
+SX1277::SX1277(Module* mod) : SX1278(mod) {
+
+}
+
+int16_t SX1277::begin(const ConfigLoRa_t& cfg) {
+  // execute common part
+  const uint8_t versions[] = { RADIOLIB_SX1278_CHIP_VERSION, RADIOLIB_SX1278_CHIP_VERSION_ALT, RADIOLIB_SX1278_CHIP_VERSION_RFM9X };
+  int16_t state = SX127x::begin(versions, 3, cfg.syncWord, cfg.preambleLength);
+  RADIOLIB_ASSERT(state);
+
+  // configure publicly accessible settings
+  state = setBandwidth(cfg.bandwidth);
+  RADIOLIB_ASSERT(state);
+
+  state = setFrequency(cfg.frequency);
+  RADIOLIB_ASSERT(state);
+
+  state = setSpreadingFactor(cfg.spreadingFactor);
+  RADIOLIB_ASSERT(state);
+
+  state = setCodingRate(cfg.codingRate);
+  RADIOLIB_ASSERT(state);
+
+  state = setOutputPower(cfg.power);
+  RADIOLIB_ASSERT(state);
+
+  state = setGain(this->gain);
+  RADIOLIB_ASSERT(state);
+
+  // set publicly accessible settings that are not a part of begin method
+  state = setCRC(true);
+  return(state);
+}
+
+int16_t SX1277::beginFSK(const ConfigFSK_t& cfg) {
+  // execute common part
+  const uint8_t versions[] = { RADIOLIB_SX1278_CHIP_VERSION, RADIOLIB_SX1278_CHIP_VERSION_ALT, RADIOLIB_SX1278_CHIP_VERSION_RFM9X };
+  int16_t state = SX127x::beginFSK(versions, 3, cfg.frequencyDeviation, cfg.receiverBandwidth, cfg.preambleLength);
+  RADIOLIB_ASSERT(state);
+
+  // configure settings not accessible by API
+  state = configFSK();
+  RADIOLIB_ASSERT(state);
+
+  // configure publicly accessible settings
+  state = setFrequency(cfg.frequency);
+  RADIOLIB_ASSERT(state);
+
+  state = setBitRate(cfg.bitRate);
+  RADIOLIB_ASSERT(state);
+
+  state = setOutputPower(cfg.power);
+  RADIOLIB_ASSERT(state);
+
+  if(this->enableOOK) {
+    state = setDataShapingOOK(RADIOLIB_SHAPING_NONE);
+    RADIOLIB_ASSERT(state);
+  } else {
+    state = setDataShaping(RADIOLIB_SHAPING_NONE);
+    RADIOLIB_ASSERT(state);
+  }
+
+  // set publicly accessible settings that are not a part of begin method
+  state = setCRC(true);
+  return(state);
+}
+
+int16_t SX1277::setFrequency(uint32_t freq) {
+  // NOTE: The datasheet specifies Band 2 as 410-525 MHz, but the hardware has been
+  // verified to work down to ~395 MHz. The lower bound is set here to 395 MHz to
+  // accommodate real-world use cases (e.g. TinyGS satellites, radiosondes) while
+  // adding a small margin below the 400 MHz practical limit.
+  if(!(((freq >= RADIOLIB_UNIT_MEGA(137)) && (freq <= RADIOLIB_UNIT_MEGA(175))) ||
+       ((freq >= RADIOLIB_UNIT_MEGA(395)) && (freq <= RADIOLIB_UNIT_MEGA(525))) ||
+       ((freq >= RADIOLIB_UNIT_MEGA(862)) && (freq <= RADIOLIB_UNIT_MEGA(1020))))) {
+    return(RADIOLIB_ERR_INVALID_FREQUENCY);
+  }
+
+  // set frequency and if successful, save the new setting
+  int16_t state = SX127x::setFrequencyRaw(freq);
+  if(state == RADIOLIB_ERR_NONE) {
+    SX127x::frequency = freq;
+  }
+  return(state);
+}
+
+int16_t SX1277::setSpreadingFactor(uint8_t sf) {
+  uint8_t newSpreadingFactor;
+
+  // check allowed spreading factor values
+  switch(sf) {
+    case 6:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_6;
+      break;
+    case 7:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_7;
+      break;
+    case 8:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_8;
+      break;
+    case 9:
+      newSpreadingFactor = RADIOLIB_SX127X_SF_9;
+      break;
+    default:
+      return(RADIOLIB_ERR_INVALID_SPREADING_FACTOR);
+  }
+
+  // set spreading factor and if successful, save the new setting
+  int16_t state = SX1278::setSpreadingFactorRaw(newSpreadingFactor);
+  if(state == RADIOLIB_ERR_NONE) {
+    SX127x::spreadingFactor = sf;
+  }
+
+  return(state);
+}
+
+int16_t SX1277::checkDataRate(DataRate_t dr, ModemType_t modem) {
+  int16_t state = RADIOLIB_ERR_UNKNOWN;
+
+  // retrieve modem if not supplied
+  if(modem == RADIOLIB_MODEM_NONE) {
+    state = this->getModem(&modem);
+    RADIOLIB_ASSERT(state);
+  }
+  
+  // select interpretation based on modem
+  if(modem == RADIOLIB_MODEM_FSK) {
+    RADIOLIB_CHECK_RANGE(dr.fsk.bitRate, 500, RADIOLIB_UNIT_KILO(300), RADIOLIB_ERR_INVALID_BIT_RATE);
+    if(!((dr.fsk.freqDev + dr.fsk.bitRate/2 <= RADIOLIB_UNIT_KILO(250)) && (dr.fsk.freqDev <= RADIOLIB_UNIT_KILO(200)))) {
+      return(RADIOLIB_ERR_INVALID_FREQUENCY_DEVIATION);
+    }
+    return(RADIOLIB_ERR_NONE);
+
+  } else if(modem == RADIOLIB_MODEM_LORA) {
+    RADIOLIB_CHECK_RANGE(dr.lora.spreadingFactor, 6, 9, RADIOLIB_ERR_INVALID_SPREADING_FACTOR);
+    RADIOLIB_CHECK_RANGE(dr.lora.bandwidth, 7800, RADIOLIB_UNIT_KILO(500), RADIOLIB_ERR_INVALID_BANDWIDTH);
+    RADIOLIB_CHECK_RANGE(dr.lora.codingRate, 4, 8, RADIOLIB_ERR_INVALID_CODING_RATE);
+    return(RADIOLIB_ERR_NONE);
+  
+  }
+
+  return(state);
+}
+
+int16_t SX1277::setModem(ModemType_t modem) {
+  switch(modem) {
+    case(ModemType_t::RADIOLIB_MODEM_LORA): {
+      ConfigLoRa_t cfg;
+      return(this->begin(cfg));
+    } break;
+    case(ModemType_t::RADIOLIB_MODEM_FSK): {
+      ConfigFSK_t cfg;
+      return(this->beginFSK(cfg));
+    } break;
+    default:
+      return(RADIOLIB_ERR_WRONG_MODEM);
+  }
+}
+
+#endif

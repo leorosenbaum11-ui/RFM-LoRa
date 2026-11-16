@@ -1,0 +1,302 @@
+#if !defined(_RADIOLIB_SX1272_H)
+#define _RADIOLIB_SX1272_H
+
+#include "../../TypeDef.h"
+
+#if !RADIOLIB_EXCLUDE_SX127X
+
+#include "../../Module.h"
+#include "SX127x.h"
+
+// SX1272 specific register map
+#define RADIOLIB_SX1272_REG_AGC_REF                             0x43
+#define RADIOLIB_SX1272_REG_AGC_THRESH_1                        0x44
+#define RADIOLIB_SX1272_REG_AGC_THRESH_2                        0x45
+#define RADIOLIB_SX1272_REG_AGC_THRESH_3                        0x46
+#define RADIOLIB_SX1272_REG_PLL_HOP                             0x4B
+#define RADIOLIB_SX1272_REG_TCXO                                0x58
+#define RADIOLIB_SX1272_REG_PA_DAC                              0x5A
+#define RADIOLIB_SX1272_REG_PLL                                 0x5C
+#define RADIOLIB_SX1272_REG_PLL_LOW_PN                          0x5E
+#define RADIOLIB_SX1272_REG_FORMER_TEMP                         0x6C
+#define RADIOLIB_SX1272_REG_BIT_RATE_FRAC                       0x70
+
+// SX1272 LoRa modem settings
+// RADIOLIB_SX1272_REG_FRF_MSB + REG_FRF_MID + REG_FRF_LSB
+#define RADIOLIB_SX1272_FRF_MSB                                 0xE4        //  7     0   carrier frequency setting: f_RF = (F(XOSC) * FRF)/2^19
+#define RADIOLIB_SX1272_FRF_MID                                 0xC0        //  7     0       where F(XOSC) = 32 MHz
+#define RADIOLIB_SX1272_FRF_LSB                                 0x00        //  7     0             FRF = 3 byte value of FRF registers
+
+// RADIOLIB_SX127X_REG_MODEM_CONFIG_1
+#define RADIOLIB_SX1272_BW_125_00_KHZ                           0b00000000  //  7     6   bandwidth:  125 kHz
+#define RADIOLIB_SX1272_BW_250_00_KHZ                           0b01000000  //  7     6               250 kHz
+#define RADIOLIB_SX1272_BW_500_00_KHZ                           0b10000000  //  7     6               500 kHz
+#define RADIOLIB_SX1272_CR_4_4                                  0b00000000  //  5     3   error coding rate:  4/4 (undocumented)
+#define RADIOLIB_SX1272_CR_4_5                                  0b00001000  //  5     3                       4/5
+#define RADIOLIB_SX1272_CR_4_6                                  0b00010000  //  5     3                       4/6
+#define RADIOLIB_SX1272_CR_4_7                                  0b00011000  //  5     3                       4/7
+#define RADIOLIB_SX1272_CR_4_8                                  0b00100000  //  5     3                       4/8
+#define RADIOLIB_SX1272_HEADER_EXPL_MODE                        0b00000000  //  2     2   explicit header mode
+#define RADIOLIB_SX1272_HEADER_IMPL_MODE                        0b00000100  //  2     2   implicit header mode
+#define RADIOLIB_SX1272_RX_CRC_MODE_OFF                         0b00000000  //  1     1   CRC disabled
+#define RADIOLIB_SX1272_RX_CRC_MODE_ON                          0b00000010  //  1     1   CRC enabled
+#define RADIOLIB_SX1272_LOW_DATA_RATE_OPT_OFF                   0b00000000  //  0     0   low data rate optimization disabled
+#define RADIOLIB_SX1272_LOW_DATA_RATE_OPT_ON                    0b00000001  //  0     0   low data rate optimization enabled, mandatory for SF 11 and 12 with BW 125 kHz
+
+// RADIOLIB_SX127X_REG_MODEM_CONFIG_2
+#define RADIOLIB_SX1272_AGC_AUTO_OFF                            0b00000000  //  2     2   LNA gain set by REG_LNA
+#define RADIOLIB_SX1272_AGC_AUTO_ON                             0b00000100  //  2     2   LNA gain set by internal AGC loop
+
+// RADIOLIB_SX127X_REG_VERSION
+#define RADIOLIB_SX1272_CHIP_VERSION                            0x22
+
+// SX1272 FSK modem settings
+// RADIOLIB_SX127X_REG_OP_MODE
+#define RADIOLIB_SX1272_NO_SHAPING                              0b00000000  //  4     3   data shaping: no shaping (default)
+#define RADIOLIB_SX1272_FSK_GAUSSIAN_1_0                        0b00001000  //  4     3                 FSK modulation Gaussian filter, BT = 1.0
+#define RADIOLIB_SX1272_FSK_GAUSSIAN_0_5                        0b00010000  //  4     3                 FSK modulation Gaussian filter, BT = 0.5
+#define RADIOLIB_SX1272_FSK_GAUSSIAN_0_3                        0b00011000  //  4     3                 FSK modulation Gaussian filter, BT = 0.3
+#define RADIOLIB_SX1272_OOK_FILTER_BR                           0b00001000  //  4     3                 OOK modulation filter, f_cutoff = BR
+#define RADIOLIB_SX1272_OOK_FILTER_2BR                          0b00010000  //  4     3                 OOK modulation filter, f_cutoff = 2*BR
+
+// RADIOLIB_SX127X_REG_PA_RAMP
+#define RADIOLIB_SX1272_LOW_PN_TX_PLL_OFF                       0b00010000  //  4     4   use standard PLL in transmit mode (default)
+#define RADIOLIB_SX1272_LOW_PN_TX_PLL_ON                        0b00000000  //  4     4   use lower phase noise PLL in transmit mode
+
+// RADIOLIB_SX127X_REG_SYNC_CONFIG
+#define RADIOLIB_SX1272_FIFO_FILL_CONDITION_SYNC_ADDRESS        0b00000000  //  3     3   FIFO will be filled when sync address interrupt occurs (default)
+#define RADIOLIB_SX1272_FIFO_FILL_CONDITION_ALWAYS              0b00001000  //  3     3   FIFO will be filled as long as this bit is set
+
+// RADIOLIB_SX1272_REG_AGC_REF
+#define RADIOLIB_SX1272_AGC_REFERENCE_LEVEL                     0x13        //  5     0   floor reference for AGC thresholds: AgcRef = -174 + 10*log(2*RxBw) + 8 + AGC_REFERENCE_LEVEL [dBm]
+
+// RADIOLIB_SX1272_REG_AGC_THRESH_1
+#define RADIOLIB_SX1272_AGC_STEP_1                              0x0E        //  4     0   1st AGC threshold
+
+// RADIOLIB_SX1272_REG_AGC_THRESH_2
+#define RADIOLIB_SX1272_AGC_STEP_2                              0x50        //  7     4   2nd AGC threshold
+#define RADIOLIB_SX1272_AGC_STEP_3                              0x0B        //  4     0   3rd AGC threshold
+
+// RADIOLIB_SX1272_REG_AGC_THRESH_3
+#define RADIOLIB_SX1272_AGC_STEP_4                              0xD0        //  7     4   4th AGC threshold
+#define RADIOLIB_SX1272_AGC_STEP_5                              0x0B        //  4     0   5th AGC threshold
+
+// RADIOLIB_SX1272_REG_PLL_LOW_PN
+#define RADIOLIB_SX1272_PLL_LOW_PN_BANDWIDTH_75_KHZ             0b00000000  //  7     6   low phase noise PLL bandwidth: 75 kHz
+#define RADIOLIB_SX1272_PLL_LOW_PN_BANDWIDTH_150_KHZ            0b01000000  //  7     6                                  150 kHz
+#define RADIOLIB_SX1272_PLL_LOW_PN_BANDWIDTH_225_KHZ            0b10000000  //  7     6                                  225 kHz
+#define RADIOLIB_SX1272_PLL_LOW_PN_BANDWIDTH_300_KHZ            0b11000000  //  7     6                                  300 kHz (default)
+
+/*!
+  \class SX1272
+  \brief Derived class for %SX1272 modules. Also used as base class for SX1273.
+  Both modules use the same basic hardware and only differ in parameter ranges.
+*/
+class SX1272: public SX127x {
+  public:
+
+    // constructor
+
+    /*!
+      \brief Default constructor. Called from Arduino sketch when creating new LoRa instance.
+      \param mod Instance of Module that will be used to communicate with the LoRa chip.
+    */
+    SX1272(Module* mod); // cppcheck-suppress noExplicitConstructor
+
+    // basic methods
+
+    /*!
+      \brief Initialization method for LoRa modem.
+      \details This method initializes the LoRa modem with the specified configuration.
+      Supports designated initializers when using C++14 or above.
+      \param config Initialization configuration.
+      \returns \ref status_codes
+    */
+    virtual int16_t begin(const ConfigLoRa_t& config);
+
+    /*!
+      \brief Initialization method for FSK modem.
+      \param config Initialization configuration.
+      \details This method initializes the FSK modem with the specified configuration.
+      Supports designated initializers when using C++14 or above.
+      \returns \ref status_codes
+    */
+    int16_t beginFSK(const ConfigFSK_t& config);
+
+    /*!
+      \brief Reset method. Will reset the chip to the default state using RST pin.
+    */
+    void reset() override;
+
+    // configuration methods
+
+    /*!
+      \brief Sets carrier frequency. Allowed values range from 860 MHz to 1020 MHz.
+      \param freq Carrier frequency to be set in Hz.
+      \returns \ref status_codes
+    */
+    int16_t setFrequency(uint32_t freq) override;
+
+    /*!
+      \brief Sets LoRa link bandwidth. Allowed values are 125000, 250000 and 500000 Hz. Only available in LoRa mode.
+      \param bw LoRa link bandwidth to be set in Hz.
+      \returns \ref status_codes
+    */
+    int16_t setBandwidth(uint32_t bw) override;
+
+    /*!
+      \brief Sets LoRa link spreading factor. Allowed values range from 6 to 12. Only available in LoRa mode.
+      \param sf LoRa link spreading factor to be set.
+      \returns \ref status_codes
+    */
+    int16_t setSpreadingFactor(uint8_t sf) override;
+
+    /*!
+      \brief Sets LoRa link coding rate denominator. Allowed values range from 4 to 8. Only available in LoRa mode.
+      Note that a value of 4 means no coding, is undocumented and not recommended without your own FEC. 
+      \param cr LoRa link coding rate denominator to be set.
+      \param longInterleave Only for PhysicalLayer compatibility, unsuported by SX127x.
+      \returns \ref status_codes
+    */
+    int16_t setCodingRate(uint8_t cr, bool longInterleave = false) override;
+
+    /*!
+      \brief Sets FSK bit rate. Allowed values range from 500 bps to 300 kbps. Only available in FSK mode.
+      \param br Bit rate to be set in bps.
+      \returns \ref status_codes
+    */
+    int16_t setBitRate(uint32_t br) override;
+    
+    /*!
+      \brief Check the data rate can be configured by this module.
+      \param dr Data rate struct.
+      \param modem The modem corresponding to the requested datarate (FSK or LoRa). 
+      Defaults to currently active modem if not supplied.
+      \returns \ref status_codes
+    */
+    int16_t checkDataRate(DataRate_t dr, ModemType_t modem = RADIOLIB_MODEM_NONE) override;
+
+    /*!
+      \brief Sets transmission output power. Allowed values range from -1 to 14 dBm (RFO pin) or +2 to +20 dBm (PA_BOOST pin).
+      High power +20 dBm operation is also supported, on the PA_BOOST pin. Defaults to PA_BOOST.
+      When using an external PA, the output power offset may be handled by the library using PhysicalLayer::setOutputPowerOffset.
+      See https://github.com/jgromes/RadioLib/wiki/High-power-Radio-Modules-Guide for details on its usage.
+      \param power Transmission output power in dBm.
+      \returns \ref status_codes
+    */
+    int16_t setOutputPower(int8_t power) override;
+
+    /*!
+      \brief Sets transmission output power. Allowed values range from -1 to 14 dBm (RFO pin) or +2 to +20 dBm (PA_BOOST pin).
+      When using an external PA, the output power offset may be handled by the library using PhysicalLayer::setOutputPowerOffset.
+      See https://github.com/jgromes/RadioLib/wiki/High-power-Radio-Modules-Guide for details on its usage.
+      \param power Transmission output power in dBm.
+      \param forceRfo Whether to force using the RFO pin for the RF output (true)
+      or to leave the selection up to user (false) based on power output.
+      \returns \ref status_codes
+    */
+    int16_t setOutputPower(int8_t power, bool forceRfo);
+
+    /*!
+      \brief Sets gain of receiver LNA (low-noise amplifier). Can be set to any integer in range 1 to 6 where 1 is the highest gain.
+      Set to 0 to enable automatic gain control (recommended).
+      \param gain Gain of receiver LNA (low-noise amplifier) to be set.
+      \returns \ref status_codes
+    */
+    int16_t setGain(uint8_t gain);
+
+    /*!
+      \brief Sets Gaussian filter bandwidth-time product that will be used for data shaping. Only available in FSK mode with FSK modulation.
+      Allowed values are RADIOLIB_SHAPING_0_3, RADIOLIB_SHAPING_0_5 or RADIOLIB_SHAPING_1_0. Set to RADIOLIB_SHAPING_NONE to disable data shaping.
+      \param sh Gaussian shaping bandwidth-time product that will be used for data shaping
+      \returns \ref status_codes
+    */
+    int16_t setDataShaping(uint8_t sh) override;
+
+    /*!
+      \brief Sets filter cutoff frequency that will be used for data shaping.
+      Allowed values are 1 for frequency equal to bit rate and 2 for frequency equal to 2x bit rate. Set to 0 to disable data shaping.
+      Only available in FSK mode with OOK modulation.
+      \param sh Cutoff frequency that will be used for data shaping
+      \returns \ref status_codes
+    */
+    int16_t setDataShapingOOK(uint8_t sh);
+
+    /*!
+      \brief Gets received signal strength indicator.
+      Overload with packet mode enabled for PhysicalLayer compatibility.
+      \returns RSSI value in dBm.
+    */
+    float getRSSI() override;
+
+    /*!
+      \brief Gets received signal strength indicator.
+      \param packet Whether to read last packet RSSI, or the current value. LoRa mode only, ignored for FSK.
+      \param skipReceive Set to true to skip putting radio in receive mode for the RSSI measurement in FSK/OOK mode.
+      \returns RSSI value in dBm.
+    */
+    float getRSSI(bool packet, bool skipReceive = false);
+
+    /*!
+      \brief Enables/disables CRC check of received packets.
+      \param enable Enable (true) or disable (false) CRC.
+      \param mode False to set CRC mode to RADIOLIB_SX127X_CRC_WHITENING_TYPE_CCITT for CCITT CRC16
+      (polynomial 0x1021, initial 0x1D0F, final XOR 0xFFFF, no RefIn, no RefOut) 
+      or true to set RADIOLIB_SX127X_CRC_WHITENING_TYPE_IBM for IBM CRC16
+      (polynomial 0x8005, initial 0xFFFF, final XOR 0x0000, no RefIn, no RefOut) 
+      Only valid in FSK mode.
+      \returns \ref status_codes
+    */
+    int16_t setCRC(bool enable, bool mode = false);
+
+    /*!
+      \brief Forces LoRa low data rate optimization. Only available in LoRa mode. After calling this method, LDRO will always be set to
+      the provided value, regardless of symbol length. To re-enable automatic LDRO configuration, call SX1278::autoLDRO()
+      \param enable Force LDRO to be always enabled (true) or disabled (false).
+      \returns \ref status_codes
+    */
+    int16_t forceLDRO(bool enable);
+
+    /*!
+      \brief Re-enables automatic LDRO configuration. Only available in LoRa mode. After calling this method, LDRO will be enabled automatically
+      when symbol length exceeds 16 ms.
+      \returns \ref status_codes
+    */
+    int16_t autoLDRO();
+
+    /*!
+      \brief Set implicit header mode for future reception/transmission. Required for spreading factor 6.
+      \param len Payload length in bytes.
+      \returns \ref status_codes
+    */
+    int16_t implicitHeader(size_t len);
+
+    /*!
+      \brief Set explicit header mode for future reception/transmission.
+      \returns \ref status_codes
+    */
+    int16_t explicitHeader();
+    
+    /*!
+      \brief Set modem for the radio to use. Will perform full reset and reconfigure the radio
+      using its default parameters.
+      \param modem Modem type to set - FSK or LoRa.
+      \returns \ref status_codes
+    */
+    int16_t setModem(ModemType_t modem) override;
+
+#if !RADIOLIB_GODMODE
+  protected:
+#endif
+    int16_t setBandwidthRaw(uint8_t newBandwidth);
+    int16_t setSpreadingFactorRaw(uint8_t newSpreadingFactor);
+    int16_t setCodingRateRaw(uint8_t newCodingRate);
+
+    int16_t configFSK() override;
+    void errataFix(bool rx) override;
+
+};
+
+#endif
+
+#endif

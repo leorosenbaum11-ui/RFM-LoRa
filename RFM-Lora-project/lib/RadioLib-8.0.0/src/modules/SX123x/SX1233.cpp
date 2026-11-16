@@ -1,0 +1,129 @@
+#include "SX1233.h"
+#include <math.h>
+#if !RADIOLIB_EXCLUDE_SX1231
+
+SX1233::SX1233(Module* mod) : SX1231(mod) {
+
+}
+
+int16_t SX1233::begin(const ConfigFSK_t& cfg) {
+  // set module properties
+  Module* mod = this->getMod();
+  int16_t state = mod->init();
+  RADIOLIB_ASSERT(state);
+  mod->hal->pinMode(mod->getIrq(), mod->hal->GpioModeInput);
+  mod->hal->pinMode(mod->getRst(), mod->hal->GpioModeOutput);
+
+  // try to find the SX1233 chip
+  uint8_t i = 0;
+  bool flagFound = false;
+  while((i < 10) && !flagFound) {
+    int16_t version = getChipVersion();
+    if((version == RADIOLIB_SX123X_CHIP_REVISION_2_A) ||
+       (version == RADIOLIB_SX123X_CHIP_REVISION_2_B) ||
+       (version == RADIOLIB_SX123X_CHIP_REVISION_2_C) ||
+       (version == RADIOLIB_SX123X_CHIP_REVISION_2_D)) {
+      flagFound = true;
+      this->chipRevision = version;
+    } else {
+      RADIOLIB_DEBUG_BASIC_PRINTLN("SX1231 not found! (%d of 10 tries) RF69_REG_VERSION == 0x%04X, expected 0x0021 / 0x0022 / 0x0023", i + 1, version);
+      mod->hal->delay(10);
+      i++;
+    }
+  }
+
+  if(!flagFound) {
+    RADIOLIB_DEBUG_BASIC_PRINTLN("No SX1233 found!");
+    state = mod->term();
+    RADIOLIB_ASSERT(state);
+    return(RADIOLIB_ERR_CHIP_NOT_FOUND);
+  }
+  RADIOLIB_DEBUG_BASIC_PRINTLN("M\tSX1233");
+
+  // configure settings not accessible by API
+  state = this->config();
+  RADIOLIB_ASSERT(state);
+  RADIOLIB_DEBUG_BASIC_PRINTLN("M\tRF69");
+
+  // configure publicly accessible settings
+  state = setFrequency(cfg.frequency);
+  RADIOLIB_ASSERT(state);
+
+  // configure bitrate
+  this->rxBandwidth = RADIOLIB_RF69_DEFAULT_RXBW;
+  state = setBitRate(cfg.bitRate);
+  RADIOLIB_ASSERT(state);
+
+  // configure default RX bandwidth
+  state = setRxBandwidth(cfg.receiverBandwidth);
+  RADIOLIB_ASSERT(state);
+
+  // configure default frequency deviation
+  state = setFrequencyDeviation(cfg.frequencyDeviation);
+  RADIOLIB_ASSERT(state);
+
+  // configure default TX output power
+  state = setOutputPower(cfg.power);
+  RADIOLIB_ASSERT(state);
+
+  // configure default preamble length
+  state = setPreambleLength(cfg.preambleLength);
+  RADIOLIB_ASSERT(state);
+
+  // set default sync word
+  uint8_t syncWord[] = RADIOLIB_RF69_DEFAULT_SW;
+  state = setSyncWord(syncWord, sizeof(syncWord));
+  RADIOLIB_ASSERT(state);
+
+  // set default packet length mode
+  state = variablePacketLengthMode();
+  RADIOLIB_ASSERT(state);
+
+  // SX123x V2a only
+  if(this->chipRevision == RADIOLIB_SX123X_CHIP_REVISION_2_A) {
+    // modify default OOK threshold value
+    state = mod->SPIsetRegValue(RADIOLIB_SX1231_REG_TEST_OOK, RADIOLIB_SX1231_OOK_DELTA_THRESHOLD);
+    RADIOLIB_ASSERT(state);
+
+    // enable OCP with 95 mA limit
+    state = mod->SPIsetRegValue(RADIOLIB_RF69_REG_OCP, RADIOLIB_RF69_OCP_ON | RADIOLIB_RF69_OCP_TRIM, 4, 0);
+    RADIOLIB_ASSERT(state);
+  }
+
+  return(RADIOLIB_ERR_NONE);
+}
+
+int16_t SX1233::setBitRate(uint32_t br) {
+  // check high bit-rate operation
+  uint8_t pllBandwidth = RADIOLIB_SX1233_PLL_BW_LOW_BIT_RATE;
+  if((br == RADIOLIB_UNIT_KILO(500)) || (br == RADIOLIB_UNIT_KILO(600))) {
+    pllBandwidth = RADIOLIB_SX1233_PLL_BW_HIGH_BIT_RATE;
+  } else {
+    // datasheet says 1.2 kbps should be the smallest possible, but 0.512 works fine
+    RADIOLIB_CHECK_RANGE(br, 500, RADIOLIB_UNIT_KILO(300), RADIOLIB_ERR_INVALID_BIT_RATE);
+  }
+
+  // check bitrate-bandwidth ratio
+  if(!(br < 2 * this->rxBandwidth)) {
+    return(RADIOLIB_ERR_INVALID_BIT_RATE_BW_RATIO);
+  }
+
+  // set mode to standby
+  setMode(RADIOLIB_RF69_STANDBY);
+
+  // set PLL bandwidth
+  Module* mod = this->getMod();
+  int16_t state = mod->SPIsetRegValue(RADIOLIB_SX1233_REG_TEST_PLL, pllBandwidth, 7, 0);
+  RADIOLIB_ASSERT(state);
+
+  // set bit rate
+  uint32_t bitRateRaw = RADIOLIB_UNIT_MEGA(RADIOLIB_RF69_CRYSTAL_FREQ) / br;
+  state = mod->SPIsetRegValue(RADIOLIB_RF69_REG_BITRATE_MSB, (bitRateRaw & 0xFF00) >> 8, 7, 0);
+  state |= mod->SPIsetRegValue(RADIOLIB_RF69_REG_BITRATE_LSB, bitRateRaw & 0x00FF, 7, 0);
+  if(state == RADIOLIB_ERR_NONE) {
+    this->bitRate = br;
+  }
+  return(state);
+}
+
+#endif

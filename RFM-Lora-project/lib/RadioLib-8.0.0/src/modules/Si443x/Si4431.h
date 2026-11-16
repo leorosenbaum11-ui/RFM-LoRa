@@ -1,0 +1,57 @@
+#if !defined(_RADIOLIB_SI4431_H)
+#define _RADIOLIB_SI4431_H
+
+#include "../../TypeDef.h"
+
+#if !RADIOLIB_EXCLUDE_SI443X
+
+#include "../../Module.h"
+#include "Si4432.h"
+
+/*!
+  \class Si4431
+  \brief Derived class for %Si4431 modules.
+*/
+class Si4431: public Si4432 {
+  public:
+
+    // constructor
+
+    /*!
+      \brief Default constructor.
+      \param mod Instance of Module that will be used to communicate with the radio chip.
+    */
+    Si4431(Module* mod); // cppcheck-suppress noExplicitConstructor
+
+    // basic methods
+
+    /*!
+      \brief Initialization method for FSK modem.
+      \param config Initialization configuration.
+      \details This method initializes the FSK modem with the specified configuration.
+      Supports designated initializers when using C++14 or above.
+      \returns \ref status_codes
+    */
+    int16_t begin(const ConfigFSK_t& config) override;
+
+    // configuration methods
+
+    /*!
+      \brief Sets output power. Allowed values range from -8 to 13 dBm in 3 dBm steps.
+      \param power Output power to be set in dBm.
+      \returns \ref status_codes
+    */
+    int16_t setOutputPower(int8_t power) override;
+
+#if !RADIOLIB_GODMODE
+  protected:
+#endif
+
+#if !RADIOLIB_GODMODE
+  private:
+#endif
+};
+
+#endif
+
+#endif
